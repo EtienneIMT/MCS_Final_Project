@@ -1,0 +1,151 @@
+* ==========================================
+* FINAL PROJECT TOP-LEVEL TESTBENCH (2kb SRAM)
+* ==========================================
+
+.protect
+.include '7nm_TT.pm'
+.unprotect
+
+.include 'sram_array_2kb.sp'
+.include 'col_peripherals.sp'
+
+.global VDD GND
+Vdd VDD 0 0.7V
+
+* --- 1:1:1 SRAM Cell ---
+.subckt SRAM WL BL BLB q qb
+Mpr  q   qb  VDD  VDD  pmos_sram  m=1
+Mnr  q   qb  GND  GND  nmos_sram  m=1
+Mpl  qb  q   VDD  VDD  pmos_sram  m=1
+Mnl  qb  q   GND  GND  nmos_sram  m=1
+Mnpr BL  WL  q    GND  nmos_sram  m=1
+Mnpl BLB WL  qb   GND  nmos_sram  m=1
+.ends
+
+* --- Basic Logic Gates ---
+.subckt INV IN OUT
+Mp1 OUT IN VDD VDD pmos_sram W=54n L=20n
+Mn1 OUT IN GND GND nmos_sram W=27n L=20n
+.ends
+
+.subckt INV_LARGE IN OUT
+Mp1 OUT IN VDD VDD pmos_sram W=216n L=20n
+Mn1 OUT IN GND GND nmos_sram W=108n L=20n
+.ends
+
+.subckt NAND2 A B OUT
+Mp1 OUT A VDD VDD pmos_sram W=54n L=20n
+Mp2 OUT B VDD VDD pmos_sram W=54n L=20n
+Mn1 OUT A N1  GND nmos_sram W=54n L=20n
+Mn2 N1  B GND GND nmos_sram W=54n L=20n
+.ends
+
+.subckt NAND3 A B C OUT
+Mp1 OUT A VDD VDD pmos_sram W=54n L=20n
+Mp2 OUT B VDD VDD pmos_sram W=54n L=20n
+Mp3 OUT C VDD VDD pmos_sram W=54n L=20n
+Mn1 OUT A N1  GND nmos_sram W=81n L=20n
+Mn2 N1  B N2  GND nmos_sram W=81n L=20n
+Mn3 N2  C GND GND nmos_sram W=81n L=20n
+.ends
+
+* --- Global Control Logic ---
+.subckt CONTROL_LOGIC CLK WEN PRE SAEN CLK_WL
+* PRE follows CLK (CLK=0: Precharge, CLK=1: Evaluate)
+Xinv1 CLK pre_b INV
+Xinv2 pre_b PRE INV
+
+* Delay CLK slightly for Wordline to ensure precharge is off
+Xinv3 CLK wl_b INV
+Xinv4 wl_b CLK_WL INV
+
+* Delay CLK more for SAEN (Sense Amp Enable)
+Xinv5 CLK d1 INV
+Xinv6 d1 d2 INV
+Xinv7 d2 d3 INV
+Xinv8 d3 clk_del INV
+
+* SAEN is active only during READ (WEN=0) AND delayed CLK=1
+Xinv9 WEN WEN_b INV
+Xnand1 clk_del WEN_b saen_b NAND2
+Xinv10 saen_b SAEN INV
+.ends
+
+* --- Row Decoder Subcircuit (From Ex2) ---
+.subckt ROW_DECODER A0 A1 A2 A3 A4 A5 CLK_IN WL_0 WL_1 WL_2 WL_3 WL_4 WL_5 WL_6 WL_7 WL_8 WL_9 WL_10 WL_11 WL_12 WL_13 WL_14 WL_15 WL_16 WL_17 WL_18 WL_19 WL_20 WL_21 WL_22 WL_23 WL_24 WL_25 WL_26 WL_27 WL_28 WL_29 WL_30 WL_31 WL_32 WL_33 WL_34 WL_35 WL_36 WL_37 WL_38 WL_39 WL_40 WL_41 WL_42 WL_43 WL_44 WL_45 WL_46 WL_47 WL_48 WL_49 WL_50 WL_51 WL_52 WL_53 WL_54 WL_55 WL_56 WL_57 WL_58 WL_59 WL_60 WL_61 WL_62 WL_63 
+Xbuf_clk CLK_IN clk_bar INV
+Xbuf_clk2 clk_bar clk_buf INV
+Xbuf_a0_1 A0 A_bar_0 INV
+...
+X_Final_NAND_62 P1_6 P2_7 clk_buf WL_NAND_OUT_62 NAND3
+X_Final_INV_62 WL_NAND_OUT_62 WL_62 INV_LARGE
+X_Final_NAND_63 P1_7 P2_7 clk_buf WL_NAND_OUT_63 NAND3
+X_Final_INV_63 WL_NAND_OUT_63 WL_63 INV_LARGE
+.ends
+
+* --- TOP LEVEL INSTANTIATION ---
+X_CTRL CLK WEN PRE SAEN CLK_WL CONTROL_LOGIC
+
+X_DEC A_1 A_2 A_3 A_4 A_5 A_6 CLK_WL WL_0 WL_1 WL_2 WL_3 WL_4 WL_5 WL_6 WL_7 WL_8 WL_9 WL_10 WL_11 WL_12 WL_13 WL_14 WL_15 WL_16 WL_17 WL_18 WL_19 WL_20 WL_21 WL_22 WL_23 WL_24 WL_25 WL_26 WL_27 WL_28 WL_29 WL_30 WL_31 WL_32 WL_33 WL_34 WL_35 WL_36 WL_37 WL_38 WL_39 WL_40 WL_41 WL_42 WL_43 WL_44 WL_45 WL_46 WL_47 WL_48 WL_49 WL_50 WL_51 WL_52 WL_53 WL_54 WL_55 WL_56 WL_57 WL_58 WL_59 WL_60 WL_61 WL_62 WL_63 ROW_DECODER
+
+X_MEM WL_0 WL_1 WL_2 WL_3 WL_4 WL_5 WL_6 WL_7 WL_8 WL_9 WL_10 WL_11 WL_12 WL_13 WL_14 WL_15 WL_16 WL_17 WL_18 WL_19 WL_20 WL_21 WL_22 WL_23 WL_24 WL_25 WL_26 WL_27 WL_28 WL_29 WL_30 WL_31 WL_32 WL_33 WL_34 WL_35 WL_36 WL_37 WL_38 WL_39 WL_40 WL_41 WL_42 WL_43 WL_44 WL_45 WL_46 WL_47 WL_48 WL_49 WL_50 WL_51 WL_52 WL_53 WL_54 WL_55 WL_56 WL_57 WL_58 WL_59 WL_60 WL_61 WL_62 WL_63 BL_0 BLB_0 BL_1 BLB_1 BL_2 BLB_2 BL_3 BLB_3 BL_4 BLB_4 BL_5 BLB_5 BL_6 BLB_6 BL_7 BLB_7 BL_8 BLB_8 BL_9 BLB_9 BL_10 BLB_10 BL_11 BLB_11 BL_12 BLB_12 BL_13 BLB_13 BL_14 BLB_14 BL_15 BLB_15 BL_16 BLB_16 BL_17 BLB_17 BL_18 BLB_18 BL_19 BLB_19 BL_20 BLB_20 BL_21 BLB_21 BL_22 BLB_22 BL_23 BLB_23 BL_24 BLB_24 BL_25 BLB_25 BL_26 BLB_26 BL_27 BLB_27 BL_28 BLB_28 BL_29 BLB_29 BL_30 BLB_30 BL_31 BLB_31 SRAM_ARRAY
+
+Xinv_A0 A_0 A_0_B INV
+X_PERIPH A_0 A_0_B PRE SAEN WEN BL_0 BLB_0 BL_1 BLB_1 BL_2 BLB_2 BL_3 BLB_3 BL_4 BLB_4 BL_5 BLB_5 BL_6 BLB_6 BL_7 BLB_7 BL_8 BLB_8 BL_9 BLB_9 BL_10 BLB_10 BL_11 BLB_11 BL_12 BLB_12 BL_13 BLB_13 BL_14 BLB_14 BL_15 BLB_15 BL_16 BLB_16 BL_17 BLB_17 BL_18 BLB_18 BL_19 BLB_19 BL_20 BLB_20 BL_21 BLB_21 BL_22 BLB_22 BL_23 BLB_23 BL_24 BLB_24 BL_25 BLB_25 BL_26 BLB_26 BL_27 BLB_27 BL_28 BLB_28 BL_29 BLB_29 BL_30 BLB_30 BL_31 BLB_31 D_0 D_1 D_2 D_3 D_4 D_5 D_6 D_7 D_8 D_9 D_10 D_11 D_12 D_13 D_14 D_15 Q_0 Q_b_0 Q_1 Q_b_1 Q_2 Q_b_2 Q_3 Q_b_3 Q_4 Q_b_4 Q_5 Q_b_5 Q_6 Q_b_6 Q_7 Q_b_7 Q_8 Q_b_8 Q_9 Q_b_9 Q_10 Q_b_10 Q_11 Q_b_11 Q_12 Q_b_12 Q_13 Q_b_13 Q_14 Q_b_14 Q_15 Q_b_15 COL_PERIPHERALS
+
+* --- TEST STIMULI (4 Cycles) ---
+* 1GHz Clock (1ns period, 50ps rise/fall as per spec)
+Vclk CLK 0 PULSE(0 0.7 0 50p 50p 0.45n 1n)
+
+* Cycle 1 (0-1ns): Write '1's to Address 0 (Row 0, Col 0)
+* Cycle 2 (1-2ns): Write '0's to Address 1 (Row 0, Col 1)
+* Cycle 3 (2-3ns): Read Address 0 (Expect '1's)
+* Cycle 4 (3-4ns): Read Address 1 (Expect '0's)
+
+Vwen WEN 0 PWL(0 0.7  1.9n 0.7  1.95n 0  4n 0)
+Va0 A_0 0 PWL(0 0  0.9n 0  0.95n 0.7  1.9n 0.7  1.95n 0  2.9n 0  2.95n 0.7  4.5n 0.7)
+Va1 A_1 0 DC 0V
+Va2 A_2 0 DC 0V
+Va3 A_3 0 DC 0V
+Va4 A_4 0 DC 0V
+Va5 A_5 0 DC 0V
+Va6 A_6 0 DC 0V
+Vd0 D_0 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd1 D_1 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd2 D_2 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd3 D_3 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd4 D_4 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd5 D_5 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd6 D_6 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd7 D_7 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd8 D_8 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd9 D_9 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd10 D_10 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd11 D_11 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd12 D_12 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd13 D_13 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd14 D_14 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+Vd15 D_15 0 PWL(0 0.7  0.9n 0.7  0.95n 0  4n 0)
+* --- INITIAL CONDITIONS ---
+.ic v(BL_0)=0.7v v(BLB_0)=0.7v
+.ic v(BL_1)=0.7v v(BLB_1)=0.7v
+.ic v(BL_2)=0.7v v(BLB_2)=0.7v
+...
+.ic v(X_MEM.X_cell_63_29.q)=0v v(X_MEM.X_cell_63_29.qb)=0.7v
+.ic v(X_MEM.X_cell_63_30.q)=0v v(X_MEM.X_cell_63_30.qb)=0.7v
+.ic v(X_MEM.X_cell_63_31.q)=0v v(X_MEM.X_cell_63_31.qb)=0.7v
+
+
+* --- SIMULATION COMMANDS ---
+.tran 10p 4.5n
+
+* Désactiver l'interface binaire et imprimer en format texte sans sauts de page
+.option post=0 nopage nomod
+
+* On imprime le temps (implicite) et 5 signaux clés sur une seule ligne 
+* pour faciliter la lecture par Python :
+.print tran v(CLK) v(WEN) v(A_0)
+.print tran v(BL_0) v(BLB_0) v(D_0) v(Q_0)
+.print tran v(X_MEM.X_cell_0_0.q) v(X_MEM.X_cell_0_0.qb)
+
+.end
